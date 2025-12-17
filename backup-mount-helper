@@ -1,0 +1,58 @@
+#!/bin/bash
+# Helper script for mounting user backup directories
+# Called via sudo by get_my_files_from, view_my_files_from, release_my_files
+
+ACTION="$1"
+MACHINE="$2"
+USERNAME="$3"
+SUBPATH="$4"
+
+BACKUP_BASE="franksinatra:/mnt/everything/backup-testing"
+MOUNT_BASE="/backups"
+
+case "$ACTION" in
+    mount)
+        if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
+            echo "Error: Missing machine or username"
+            exit 1
+        fi
+        MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}"
+        mkdir -p "$MOUNT_POINT"
+        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$MOUNT_POINT" 2>&1 | grep -v "hint"
+        ;;
+    umount)
+        if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
+            echo "Error: Missing machine or username"
+            exit 1
+        fi
+        MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}"
+        /usr/bin/umount "$MOUNT_POINT"
+        rmdir "$MOUNT_POINT" 2>/dev/null
+        rmdir "${MOUNT_BASE}/${MACHINE}" 2>/dev/null
+        ;;
+    view)
+        if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
+            echo "Error: Missing machine or username"
+            exit 1
+        fi
+        TEMP_MOUNT=$(mktemp -d)
+        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$TEMP_MOUNT" 2>&1 | grep -v "hint"
+        if [ $? -eq 0 ]; then
+            if [ -n "$SUBPATH" ]; then
+                if [ -d "${TEMP_MOUNT}/${SUBPATH}" ]; then
+                    ls -la "${TEMP_MOUNT}/${SUBPATH}"
+                else
+                    echo "Error: Directory '${SUBPATH}' not found"
+                fi
+            else
+                ls -la "$TEMP_MOUNT"
+            fi
+            /usr/bin/umount "$TEMP_MOUNT"
+        fi
+        rmdir "$TEMP_MOUNT"
+        ;;
+    *)
+        echo "Invalid action"
+        exit 1
+        ;;
+esac

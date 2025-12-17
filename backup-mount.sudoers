@@ -1,0 +1,2 @@
+# Allow all users to mount/unmount their backup directories via helper script
+ALL ALL=(root) NOPASSWD: /usr/local/bin/backup-mount-helper
