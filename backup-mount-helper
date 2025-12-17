@@ -16,28 +16,58 @@ case "$ACTION" in
             echo "Error: Missing machine or username"
             exit 1
         fi
-        MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}"
+        if [ -n "$SUBPATH" ]; then
+            MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}/${SUBPATH}"
+            REMOTE_PATH="${BACKUP_BASE}/${MACHINE}/${USERNAME}/${SUBPATH}"
+        else
+            MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}"
+            REMOTE_PATH="${BACKUP_BASE}/${MACHINE}/${USERNAME}"
+        fi
         mkdir -p "$MOUNT_POINT"
-        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$MOUNT_POINT" 2>&1 | grep -v "hint"
+        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "$REMOTE_PATH" "$MOUNT_POINT" 2>&1 | grep -v "hint"
         ;;
     umount)
-        if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
-            echo "Error: Missing machine or username"
+        if [ -z "$USERNAME" ]; then
+            echo "Error: Missing username"
             exit 1
         fi
-        MOUNT_POINT="${MOUNT_BASE}/${MACHINE}/${USERNAME}"
-        /usr/bin/umount "$MOUNT_POINT"
-        rmdir "$MOUNT_POINT" 2>/dev/null
-        rmdir "${MOUNT_BASE}/${MACHINE}" 2>/dev/null
+        if [ -n "$MACHINE" ]; then
+            # Unmount all for specific machine/user
+            MOUNTS=$(mount | grep "^franksinatra:/mnt/everything/backup-testing/${MACHINE}/${USERNAME}" | awk '{print $3}')
+        else
+            # Unmount all for user
+            MOUNTS=$(mount | grep "^franksinatra:/mnt/everything/backup-testing/.*/${USERNAME}" | awk '{print $3}')
+        fi
+        for MOUNT_POINT in $MOUNTS; do
+            /usr/bin/umount "$MOUNT_POINT"
+            # Clean up empty directories
+            while [ "$MOUNT_POINT" != "$MOUNT_BASE" ]; do
+                rmdir "$MOUNT_POINT" 2>/dev/null || break
+                MOUNT_POINT=$(dirname "$MOUNT_POINT")
+            done
+        done
+        ;;
+    list)
+        if [ -z "$USERNAME" ]; then
+            echo "Error: Missing username"
+            exit 1
+        fi
+        if [ -n "$MACHINE" ]; then
+            mount | grep "^franksinatra:/mnt/everything/backup-testing/${MACHINE}/${USERNAME}" | awk '{print $3}'
+        else
+            mount | grep "^franksinatra:/mnt/everything/backup-testing/.*/${USERNAME}" | awk '{print $3}'
+        fi
         ;;
     view)
         if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
             echo "Error: Missing machine or username"
             exit 1
         fi
-        TEMP_MOUNT=$(mktemp -d)
+        TEMP_MOUNT="/tmp/backups/${MACHINE}/${USERNAME}"
+        mkdir -p "$TEMP_MOUNT"
         /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$TEMP_MOUNT" 2>&1 | grep -v "hint"
-        if [ $? -eq 0 ]; then
+        MOUNT_EXIT=${PIPESTATUS[0]}
+        if [ $MOUNT_EXIT -eq 0 ]; then
             if [ -n "$SUBPATH" ]; then
                 if [ -d "${TEMP_MOUNT}/${SUBPATH}" ]; then
                     ls -la "${TEMP_MOUNT}/${SUBPATH}"
@@ -49,7 +79,9 @@ case "$ACTION" in
             fi
             /usr/bin/umount "$TEMP_MOUNT"
         fi
-        rmdir "$TEMP_MOUNT"
+        rmdir "$TEMP_MOUNT" 2>/dev/null
+        rmdir "/tmp/backups/${MACHINE}" 2>/dev/null
+        rmdir "/tmp/backups" 2>/dev/null
         ;;
     *)
         echo "Invalid action"
