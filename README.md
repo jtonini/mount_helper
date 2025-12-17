@@ -1,6 +1,6 @@
 # Backup Mount Helper
 
-Tools for users to access their backed-up home directories from franksinatra.
+Tools for users to access their backed-up home directories from a NAS.
 
 ## Components
 
