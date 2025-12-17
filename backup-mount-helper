@@ -9,11 +9,28 @@ SUBPATH="$4"
 
 BACKUP_BASE="franksinatra:/mnt/everything/backup-testing"
 MOUNT_BASE="/backups"
+VALID_MACHINES="aamy adam alexis badenpowell boyi camryn cooper evan hamilton irene2 josh justin kevin khanh mayer michael sarah thais"
+
+# Validate machine name
+validate_machine() {
+    local machine="$1"
+    for valid in $VALID_MACHINES; do
+        if [ "$machine" = "$valid" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 case "$ACTION" in
     mount)
         if [ -z "$MACHINE" ] || [ -z "$USERNAME" ]; then
             echo "Error: Missing machine or username"
+            exit 1
+        fi
+        if ! validate_machine "$MACHINE"; then
+            echo "Error: Unknown machine '$MACHINE'"
+            echo "Available machines: $VALID_MACHINES"
             exit 1
         fi
         if [ -n "$SUBPATH" ]; then
@@ -24,7 +41,15 @@ case "$ACTION" in
             REMOTE_PATH="${BACKUP_BASE}/${MACHINE}/${USERNAME}"
         fi
         mkdir -p "$MOUNT_POINT"
-        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "$REMOTE_PATH" "$MOUNT_POINT" 2>&1 | grep -v "hint"
+        OUTPUT=$(/usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "$REMOTE_PATH" "$MOUNT_POINT" 2>&1)
+        MOUNT_EXIT=$?
+        echo "$OUTPUT" | grep -v "hint"
+        if [ $MOUNT_EXIT -ne 0 ]; then
+            rmdir "$MOUNT_POINT" 2>/dev/null
+            rmdir "${MOUNT_BASE}/${MACHINE}/${USERNAME}" 2>/dev/null
+            rmdir "${MOUNT_BASE}/${MACHINE}" 2>/dev/null
+            exit 1
+        fi
         ;;
     umount)
         if [ -z "$USERNAME" ]; then
@@ -63,10 +88,16 @@ case "$ACTION" in
             echo "Error: Missing machine or username"
             exit 1
         fi
+        if ! validate_machine "$MACHINE"; then
+            echo "Error: Unknown machine '$MACHINE'"
+            echo "Available machines: $VALID_MACHINES"
+            exit 1
+        fi
         TEMP_MOUNT="/tmp/backups/${MACHINE}/${USERNAME}"
         mkdir -p "$TEMP_MOUNT"
-        /usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$TEMP_MOUNT" 2>&1 | grep -v "hint"
-        MOUNT_EXIT=${PIPESTATUS[0]}
+        OUTPUT=$(/usr/bin/mount -t nfs -o ro,noexec,nosuid,vers=3 "${BACKUP_BASE}/${MACHINE}/${USERNAME}" "$TEMP_MOUNT" 2>&1)
+        MOUNT_EXIT=$?
+        echo "$OUTPUT" | grep -v "hint"
         if [ $MOUNT_EXIT -eq 0 ]; then
             if [ -n "$SUBPATH" ]; then
                 if [ -d "${TEMP_MOUNT}/${SUBPATH}" ]; then

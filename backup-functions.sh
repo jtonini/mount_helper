@@ -34,11 +34,10 @@ get_my_files_from() {
     if [ $? -eq 0 ]; then
         if [ -n "$2" ]; then
             echo "Your backup from $1 is now mounted at /backups/$1/$USER/$2"
-            echo "When finished, run: release_my_files $1"
         else
             echo "Your backup from $1 is now mounted at /backups/$1/$USER"
-            echo "When finished, run: release_my_files $1"
         fi
+        echo "When finished, run: release_my_files $1"
     fi
 }
 
