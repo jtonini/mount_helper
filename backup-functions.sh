@@ -18,7 +18,7 @@ view_my_files_from() {
     else
         echo "Listing your backup files from $1..."
     fi
-    sudo /usr/bin/backup-mount-helper view "$1" "$USER" "$2"
+    sudo /usr/local/bin/backup-mount-helper view "$1" "$USER" "$2"
 }
 
 get_my_files_from() {
@@ -30,7 +30,7 @@ get_my_files_from() {
         echo "Available machines: $BACKUP_MACHINES"
         return 1
     fi
-    sudo /usr/bin/backup-mount-helper mount "$1" "$USER" "$2"
+    sudo /usr/local/bin/backup-mount-helper mount "$1" "$USER" "$2"
     if [ $? -eq 0 ]; then
         if [ -n "$2" ]; then
             echo "Your backup from $1 is now mounted at /backups/$1/$USER/$2"
@@ -45,9 +45,9 @@ get_my_files_from() {
 release_my_files() {
     # Get list of mounts
     if [ -n "$1" ]; then
-        MOUNTS=$(sudo /usr/bin/backup-mount-helper list "$1" "$USER")
+        MOUNTS=$(sudo /usr/local/bin/backup-mount-helper list "$1" "$USER")
     else
-        MOUNTS=$(sudo /usr/bin/backup-mount-helper list "" "$USER")
+        MOUNTS=$(sudo /usr/local/bin/backup-mount-helper list "" "$USER")
     fi
 
     if [ -z "$MOUNTS" ]; then
@@ -64,7 +64,7 @@ release_my_files() {
     echo ""
     read -p "Unmount these? [y/N] " confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        sudo /usr/bin/backup-mount-helper umount "$1" "$USER"
+        sudo /usr/local/bin/backup-mount-helper umount "$1" "$USER"
         echo "Backup(s) unmounted."
     else
         echo "Cancelled."
