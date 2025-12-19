@@ -101,12 +101,16 @@ case "$ACTION" in
         if [ $MOUNT_EXIT -eq 0 ]; then
             if [ -n "$SUBPATH" ]; then
                 if [ -d "${TEMP_MOUNT}/${SUBPATH}" ]; then
-                    ls -la "${TEMP_MOUNT}/${SUBPATH}"
+                    echo "Source: ${BACKUP_BASE}/${MACHINE}/${USERNAME}/${SUBPATH}"
+                    echo ""
+                    ls -ltp "${TEMP_MOUNT}/${SUBPATH}"
                 else
                     echo "Error: Directory '${SUBPATH}' not found"
                 fi
             else
-                ls -la "$TEMP_MOUNT"
+                echo "Source: ${BACKUP_BASE}/${MACHINE}/${USERNAME}"
+                echo ""
+                ls -ltp "$TEMP_MOUNT"
             fi
             /usr/bin/umount "$TEMP_MOUNT"
         fi
